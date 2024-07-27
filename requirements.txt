@@ -1,0 +1,11 @@
+pandas==2.2.1
+gensim==4.3.2
+nltk==3.8.1
+streamlit==1.33.0
+annoy==1.17.3
+scipy==1.12.0
+numpy==1.26.4
+pyyaml==6.0.1
+dashscope==1.17.1
+streamlit-modal==0.1.2
+spacy==3.7.4

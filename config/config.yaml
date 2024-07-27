@@ -1,0 +1,106 @@
+nltk_resources:
+- punkt
+- stopwords
+- wordnet
+nltk_downloaded: true
+word2vec_model:
+  type: word2vec-google-news-300
+ann_model:
+  dimensions: 300
+  path: ./datasets/tree.ann
+  tree_num: 10
+spacy_nlp_models:
+- en_core_web_sm
+- en_core_web_md
+spacy_downloaded: true
+datasets:
+  without_vectors: ./datasets/merged_file.csv
+  with_vectors: ./datasets/all_data.csv
+dashscope_api_key: your_api_key_here
+basic_filters:
+- availability
+- bipartite
+- directed
+- weighted
+- positive_weights
+- negative_weights
+- multiple_edges
+- reciprocal
+- directed_cycle
+- loops
+- timestamp
+statistics:
+- size: int
+- volume: int
+- maximum_degree: int
+- loop_count: int
+- triangle_count: int
+- min_degree: int
+- average_degree: float
+- diameter: float
+- median_distance: float
+- mean_distance: float
+- gini_coefficient: float
+- p_value: float
+- spectral_norm: float
+- reciprocity: float
+- density: float
+- max_k_core: float
+advanced_statistics:
+- left_size: int
+- right_size: int
+- wedge_count: int
+- claw_count: int
+- cross_count: int
+- square_count: int
+- 4_tour_count: int
+- maximum_left_degree: int
+- maximum_right_degree: int
+- unique_edge_count: int
+- maximum_outdegree: int
+- maximum_indegree: int
+- size_of_lscc: int
+- average_left_degree: float
+- average_right_degree: float
+- fill: float
+- size_of_lcc: int
+- 50_percentile_effective_diameter: float
+- 90_percentile_effective_diameter: float
+- balanced_inequality_ratio: float
+- left_balanced_inequality_ratio: float
+- right_balanced_inequality_ratio: float
+- relative_edge_distribution_entropy: float
+- power_law_exponent: float
+- tail_power_law_exponent: float
+- tail_power_law_exponent_with_p: float
+- left_tail_power_law_exponent_with_p: float
+- left_p_value: float
+- right_tail_power_law_exponent_with_p: float
+- right_p_value: float
+- degree_assortativity: float
+- degree_assortativity_p_value: float
+- algebraic_connectivity: float
+- spectral_separation: float
+- controllability: float
+- relative_controllability: float
+- average_edge_multiplicity: float
+- clustering_coefficient: float
+- non_bipartivity: float
+- normalized_non_bipartivity: float
+- algebraic_non_bipartivity: float
+- spectral_bipartite_frustration: float
+- relative_size_of_lscc: float
+- outdegree_balanced_inequality_ratio: float
+- indegree_balanced_inequality_ratio: float
+- outdegree_tail_power_law_exponent_with_p: float
+- outdegree_p_value: float
+- indegree_tail_power_law_exponent_with_p: float
+- indegree_p_value: float
+- in_outdegree_correlation: float
+- directed_clustering_coefficient: float
+- operator_2_norm: float
+- cyclic_eigenvalue: float
+- negativity: float
+- algebraic_conflict: float
+- spectral_signed_frustration: float
+- triadic_conflict: float
