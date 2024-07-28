@@ -1,3 +1,7 @@
+_ = """
+This file contains functions for highlighting words in the description of search results.
+"""
+
 import spacy
 from nltk.corpus import wordnet as wn
 
@@ -35,6 +39,8 @@ def check_semantic_relationship(word1, word2, pos1 = None, pos2 = None):
     return False
 
 # Highlight words in text_B that are semantically related to key words in text_A
+# Some words are ignored because they are not semantically related to the key words
+# Grammar dependencies are used to determine the positions that key words may appear
 def highlight_texts(text_A, text_B, spacy_nlp, mark):
     doc_A = spacy_nlp(text_A)
     doc_B = spacy_nlp(text_B)

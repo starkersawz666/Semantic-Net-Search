@@ -1,17 +1,21 @@
 _ = '''
-Code Part 1: Loading and Searching Functions
+- Loading and Searching Functions
 
+This part of the code contains the functions for loading and searching the dataset used in the web application.
+Main functions include:
 preprocess_text(): tokenizing given text and removing stop words
 text2vec(): computing the vector representation of given text using word2vec model
 meets_filters(): checking if a row meets the basic filters and advanced filters
 searching(): searching for similar texts using AnnoyIndex and filtering results based on basic and advanced filters
 '''
 
-import gensim.downloader as api
-import pandas as pd
+# NLTK (Natural Language Toolkit) for building Python programs to work with human language data.
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+
+import gensim.downloader as api
+import pandas as pd
 import streamlit as st
 from annoy import AnnoyIndex
 import yaml
@@ -49,35 +53,49 @@ def load_config():
 config = load_config()
 
 # Load required models for text processing
-@st.cache_resource()
+@st.cache_resource() # Streamlit's caching decorator to speed up load times after the first execution.
 def load_resources():
     print('Model loading started')
-    # Download and load word2vec model, and check update if exists
+
+    # Check if the NLTK models have been downloaded; if not, download them.
     if config['nltk_downloaded'] == False:
         print('ntlk models downloading')
         for resource in config['nltk_resources']:
             nltk.download(resource)
+
+        # Update the config to reflect that NLTK resources are now downloaded.
         config['nltk_downloaded'] = True
+        # Save the updated configuration to the YAML file.
         with open('./config/config.yaml', 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
     print('word2vec models downloading')
+
+    # Load the Word2Vec model specified in the configuration.
     word2vec_model = api.load(config['word2vec_model']['type'])
+
+    # Initialize and load the Annoy index for fast nearest neighbor retrieval.
     ann_model = AnnoyIndex(config['ann_model']['dimensions'], 'angular')
     ann_model.load(config['ann_model']['path'])
+
+    # Check if the SpaCy models have been downloaded; if not, download them.
     if config['spacy_downloaded'] == False:
         print('spacy model downloading')
         for resource in config['spacy_nlp_models']:
             spacy.cli.download(resource)
         config['spacy_downloaded'] = True
+
+        # Save the updated configuration to the YAML file.
         with open('./config/config.yaml', 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        
+    # Load the SpaCy NLP model.
     spacy_nlp = spacy.load('en_core_web_sm')
     print('Model loaded')
     return word2vec_model, ann_model, spacy_nlp
 
 word2vec_model, ann_model, spacy_nlp = load_resources()
 
-# Load data from dataset
+# Load network data from dataset
 @st.cache_data()
 def load_data():
     print('Data loading started')
@@ -100,9 +118,11 @@ def text2vec(text):
     tokens = preprocess_text(text)
     return sum(word2vec_model.get_vector(token) for token in tokens if token in word2vec_model.key_to_index)
 
-# Check if a row meets specified filters
-def meets_filters(index, basic_filter_keys, advanced_filters, df):
+# Function to check if a specific row in the DataFrame meets all the provided filters
+def meets_filters(index, basic_filter_keys, statistics_filters, df):
     row = df.loc[df['index'] == index].iloc[0]
+
+    # Iterate through each key in the basic filters
     for key in basic_filter_keys:
         if st.session_state[key] == 'True':
             if row[key] != True:
@@ -110,33 +130,50 @@ def meets_filters(index, basic_filter_keys, advanced_filters, df):
         if st.session_state[key] == 'False':
             if row[key] != False:
                 return False
-    for filter_ in advanced_filters:
+            
+    # Iterate through each condition in the statistics filters
+    for filter_ in statistics_filters:
+        # Extract filter details that each condition has
         name = filter_['category']
         min_value = filter_['min_value']
         max_value = filter_['max_value']
         accept_missing = filter_['accept_missing']
+
+        # Handle cases where minimum or maximum values are not specified
         if min_value == None or min_value == '':
             min_value = -math.inf
         if max_value == None or max_value == '':
             max_value = math.inf
+        
+        # Additionally check for missing values only if they are not acceptable
         if row[name] > max_value or row[name] < min_value or row[name] == None and not accept_missing or pd.isna(row[name]) and not accept_missing:
             return False
+        
+    # If the row passes all the filters, return True
     return True
 
 # Perform search based on filters
 def searching(text_input, basic_filter_keys, advanced_filters, return_num, df):
+    # Convert text input into a vector
     vector_input = text2vec(text_input)
+
+    # Check if the vectorized input is valid (must be a NumPy array of a specified dimension)
     if type(vector_input) != np.ndarray or len(vector_input) != config['ann_model']['dimensions']:
         return []
     search_results = []
     n_neighbors = return_num
+
+    # Loop until the desired number of results is achieved or the number of neighbors exceeds the data size
     while n_neighbors < df.shape[0]:
         if len(search_results) >= return_num:
-            break
+            break # Break the loop if the desired number of results has been found.
         if len(search_results) == 0:
             n_neighbors = n_neighbors * 2
         else:
+            # Increase neighbors dynamically based on the number of results already found
             n_neighbors = math.ceil(n_neighbors / len(search_results) * return_num)
+        
+        # Retrieve indexes of the nearest neighbors using Annoy index
         indexes = ann_model.get_nns_by_vector(vector_input, n_neighbors)
         for index in indexes:
             if index not in search_results and meets_filters(index, basic_filter_keys, advanced_filters, df):
@@ -145,6 +182,7 @@ def searching(text_input, basic_filter_keys, advanced_filters, return_num, df):
                     break
     return search_results
 
+# Generate lists of statistics options from configuration
 statistics_options = schemas.generate_statistics(config)
 statistics_options.sort()
 advanced_statistics_option = schemas.generate_advanced_statistics(config)
@@ -156,16 +194,24 @@ dashscope.api_key = config['dashscope_api_key']
 # Extract filters from text using dashscope
 def extract_filters(text, schema, max_trials=3):
     cnt_trials = 0
+
+    # Attempt to extract conditions up to a maximum number of trials
     while cnt_trials < max_trials:
         cnt_trials += 1
         try:
+            # Perform a query to the extraction API to obtain statistical conditions from the text
             response = extract.statistics_query(schema, text)
+            # Check if the response from the API starts with 'Error:'
             if response.startswith('Error:'):
-                pass
+                # Ignore errors and try again
+                continue
             conditions = extract.extract_conditions(response)
             return conditions
         except:
+            # Capture and print any exception raised during the extraction process
             print(str(sys.exc_info()[0]))
+
+            # Create an error modal to display the error to the user
             error_modal = Modal(
                 "Error", 
                 key="error-modal-" + str(cnt_trials),
@@ -179,18 +225,25 @@ def extract_filters(text, schema, max_trials=3):
                 error_modal.open()
                 return None
             continue
+    return None
 
+# Function to extract a description from text with a defined number of retry attempts
 def extract_description(text, max_trials=3):
     cnt_trials = 0
+
+    # Attempt to extract text up to a maximum number of trials
     while cnt_trials < max_trials:
         cnt_trials += 1
         try:
             response = extract.description_query(text)
             if response.startswith('Error:'):
-                pass
+                continue
             return response
         except:
+            # Capture and print any exception raised during the extraction process
             print(str(sys.exc_info()[0]))
+
+            # Create an error modal to display the error to the user
             error_modal = Modal(
                 "Error", 
                 key="error-modal-" + str(cnt_trials),
@@ -204,14 +257,18 @@ def extract_description(text, max_trials=3):
                 error_modal.open()
                 return None
             continue
+    return None
 
 
 _ = '''
-Part 2: Streamlit Interface
+- Filter Management
 
-perform_search(): dealing with searching results and generate a table for display
+This section of the code manages dynamic filter configurations, including functions for initializing session state filters, 
+    adding and removing filters, and performing data search operations based on user-defined filter criteria. 
+The process of submission data is also included in this section.
 '''
 
+# Load CSS style
 css_style.css_style()
 
 # Initialize session state for filters
@@ -243,20 +300,29 @@ def delete_all_filters():
 
 # Perform search operation using text input and filters
 def perform_search(search_text, basic_filter_keys, advanced_filters, result_count, df):
+    # Execute the search query
     search_results = searching(search_text, basic_filter_keys, advanced_filters, result_count, df)
     default_columns = ['name', 'link', 'description', 'size', 'volume']
     show_columns = default_columns.copy()
+
+    # Extend the results display columns with any basic filters that are not 'None' and not already in the default columns
     for key in basic_filter_keys:
         if st.session_state[key] != 'None' and key not in default_columns:
             show_columns.append(key)
+
+    # Include columns for statistics filters if they are not already part of the default columns
     for filter_ in advanced_filters:
         name = filter_['category']
         if name not in default_columns:
             show_columns.append(name)
+    
+    # Populate the return table with data from each matching entry found
     return_table = pd.DataFrame(columns=show_columns)
     for index in search_results:
         row = df.loc[df['index'] == index].iloc[0]
         new_row = [row['name'], row['link'], row['description'], row['size'], row['volume']]
+
+        # Append data if the key is active and not a default column
         for key in basic_filter_keys:
             if st.session_state[key] != 'None' and key not in default_columns:
                 new_row.append(row[key])
@@ -267,26 +333,35 @@ def perform_search(search_text, basic_filter_keys, advanced_filters, result_coun
         return_table.loc[len(return_table)] = new_row
     return return_table
 
-
+# Function to create and save a new DataFrame based on user choices regarding column mappings
 def submit_data(user_choices, original_df, main_attrs):
     result_df = pd.DataFrame()
+
+    # Iterate over each user-specified column mapping
     for new_col, original_col in user_choices.items():
         if original_col is None:
-            continue
+            continue # Skip processing if the user did not specify a column
         if original_col in main_attrs:
             result_df[original_col] = original_df[new_col].copy()
+
+    # Generate a timestamp to use in the filename, ensuring uniqueness and traceability
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     rand_str = randkey.random_string(10)
     file_name = f"data_{timestamp}_{rand_str}.csv"
     result_df.to_csv("./datasets/user_submission/" + file_name, index=False)
 
 _ = '''
-Part 3: Search Page
+- Streamlit Interface
+
+This section of the code is dedicated to setting up and managing the user interface elements using Streamlit.
+It includes defining the layout, widgets, and interactions that allow users to input data, trigger functions, and view results directly 
+    within a web browser. 
+The interface is designed to be intuitive and responsive, providing a seamless user experience.
 '''
 
 # Streamlit page for search interface
 def page_search():
-    # Basic Filters: True / False / None filters
+    # Basic Filters: True / False / None filters, initialize with 'None'
     basic_options = {}
     for option in config['basic_filters']:
         basic_options[option] = 'None'
@@ -295,7 +370,7 @@ def page_search():
         if key not in st.session_state:
             st.session_state[key] = basic_options[key]
 
-    # Streamlit page
+    # main header of the page
     st.markdown("<h1>SemanticNetSearch Interface</h1>", unsafe_allow_html=True)
     # st.title("Network Search Interface")
     input_column, button_column = st.columns([4, 1])
@@ -303,9 +378,11 @@ def page_search():
     if 'search_text' not in st.session_state:
         st.session_state['search_text'] = ''
     
+    # Text area for entering the search query
     with input_column:
         search_text = st.text_area("Search Text", value = st.session_state['search_text'])
 
+    # Button for triggering filter extraction from the search text
     with button_column:
         st.markdown('<div class="extract-button">', unsafe_allow_html=True)
         # Add some blank lines
@@ -314,10 +391,14 @@ def page_search():
             # Condition Extraction
             conditions = extract_filters(search_text, schema)
             if conditions is not None:
+                # Clear existing filters before adding new ones
                 delete_all_filters()
+
+                # Organize conditions and group them
                 conditions.sort(key = itemgetter(0))
                 grouped_conditions = {k: list(g) for k, g in groupby(conditions, key=itemgetter(0))}
                 for key, group in grouped_conditions.items():
+                    # Apply extracted conditions as new filters
                     if key in statistics_options or key in advanced_statistics_option:
                         upper_bound = None
                         lower_bound = None
@@ -339,16 +420,13 @@ def page_search():
             else:
                 print("No conditions extracted")
             
-            # Description Extraction
+            # # Extract description and update search text if necessary
             extracted_desc = extract_description(search_text)
             if extracted_desc is not None:
                 st.session_state['search_text'] = extracted_desc
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
         
-    
-
-
     # Display the basic filters using an expander
     basic_filters = st.expander("Basic Filters")
     with st.expander("Basic Filters"):
@@ -432,6 +510,7 @@ def page_search():
 
     # Searching button
     if st.button("Search"):
+        # Check if the search text field is empty before proceeding
         if not search_text:
             st.warning("Search text cannnot be empty")
         else:
@@ -447,17 +526,24 @@ def page_search():
             # st.write("Search Results:")
             st.markdown("---")
             
+            # Iterate over each row in the search results DataFrame
             for index, row in results.iterrows():
                 with st.container():
                     st.markdown(f"### <a href='{row['link']}' target='_blank' class='custom-link'>{row['name']}</a>", unsafe_allow_html=True)
                     # st.markdown(f"### [{row['name']}]({row['link']})", unsafe_allow_html = True)
                     description_text = row['description']
                     random_mark = randkey.random_string()
+
+                    # Highlight terms in the description that match terms in the search text
                     highlighted_text = highlight.highlight_texts(search_text.replace('network', ''), description_text, spacy_nlp, random_mark)
                     highlight_start_tag = "<span class='highlight-keyword'>"
                     highlight_end_tag = "</span>"
+
+                    # Apply the highlighting HTML tags to the description text
                     pattern = rf'{re.escape(random_mark)}(.*?){re.escape(random_mark)}'
                     highlighted_text = re.sub(pattern, f"{highlight_start_tag}\\1{highlight_end_tag}", highlighted_text)
+
+                    # Display the highlighted description text
                     st.markdown(f"<span class='description'>{highlighted_text}</span>", unsafe_allow_html=True)
                     for col in sorted(results.columns):
                         if col not in ['name', 'link', 'description']:
@@ -470,19 +556,25 @@ def page_search():
                     st.markdown(f"[Read More]({row['link']})", unsafe_allow_html = True)
                     st.markdown("---")
 
-
+# Streamlit page for dataset submissions
 def page_submission():
     st.markdown("<h1>SemanticNetSearch Datasets Submission</h1>", unsafe_allow_html=True)
     st.markdown("<h3>Select a file to upload:</h3>", unsafe_allow_html=True)
+
+    # Create a file uploader widget allowing specific file types
     uploaded_file = st.file_uploader("label", label_visibility='collapsed', type=['csv', 'xlsx', 'xls'])
     if uploaded_file is not None:
         df = None
+
+        # Determine the file type and load data accordingly
         if uploaded_file.type == "text/csv":
             df = pd.read_csv(uploaded_file)
         elif uploaded_file.type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
             df = pd.read_excel(uploaded_file)
         elif uploaded_file.type == "application/vnd.ms-excel.sheet.binary.macroEnabled.12":
             df = pd.read_excel(uploaded_file, engine='pyxlsb')
+
+        # Check if the DataFrame is empty or not loaded properly
         if df is None:
             st.markdown("<h4>Error: Illegal File. Please try again.</h4>", unsafe_allow_html=True)
         else:
@@ -497,12 +589,16 @@ def page_submission():
             matching = extract.match_schema(main_attrs, sub_attrs, nlp, threshold=0.8, max_saved_attrs=6)
             user_choices = {}
             st.markdown("<h4>Automatical matching result:</h4>", unsafe_allow_html=True)
+
+            # Process and display matching results if available
             if matching is not None:
                 main_attrs.sort()
                 main_attrs.append(None)
                 keys = list(matching.keys())
                 num_keys = len(keys)
                 num_rows = (num_keys + 2) // 3
+
+                # Display matching options for user to confirm or adjust
                 for i in range(num_rows):
                     cols = st.columns(3)
                     for j in range(3):

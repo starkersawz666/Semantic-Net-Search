@@ -1,3 +1,7 @@
+_ = """
+This file is used to generate a random string of specified length as a mark for highlighting part.
+"""
+
 import string
 import random
 

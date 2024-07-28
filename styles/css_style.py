@@ -1,8 +1,12 @@
+_ = """
+This file contains the CSS styles used in the web pages of the network search program.
+"""
+
 import streamlit as st
 
 # this function is used to add custom CSS styles to the web pages
 # the styles are defined in the css variable and added to the web page using the st.markdown function
-# to use the styles, simply call the css_style() function at the beginning of your script
+# to use the styles, simply call the css_style() function at the beginning of the main script
 def css_style():
     css = ""
     css += """

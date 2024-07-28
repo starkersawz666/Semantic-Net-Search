@@ -1,3 +1,7 @@
+_ = """
+This file contains functions for generating SQL statements and extracting information from the user's input / LLMs' response.
+"""
+
 import dashscope
 from dashscope import Generation
 from http import HTTPStatus

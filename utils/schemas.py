@@ -1,3 +1,7 @@
+_ = """
+This file contains functions to generate schema for filters from configuration.
+"""
+
 # Generate statistics options from configuration
 def generate_statistics(config):
     statistics = config['statistics']
@@ -7,6 +11,7 @@ def generate_statistics(config):
             statistics_options.append(key)
     return statistics_options
 
+# Generate advanced statistics options from configuration
 def generate_advanced_statistics(config):
     statistics = config['advanced_statistics']
     statistics_options = []
