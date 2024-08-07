@@ -2,7 +2,7 @@ nltk_resources:
 - punkt
 - stopwords
 - wordnet
-nltk_downloaded: true
+nltk_downloaded: false
 word2vec_model:
   type: word2vec-google-news-300
 ann_model:
@@ -12,7 +12,7 @@ ann_model:
 spacy_nlp_models:
 - en_core_web_sm
 - en_core_web_md
-spacy_downloaded: true
+spacy_downloaded: false
 datasets:
   without_vectors: ./datasets/merged_file.csv
   with_vectors: ./datasets/all_data.csv
