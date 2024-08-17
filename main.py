@@ -361,6 +361,8 @@ The interface is designed to be intuitive and responsive, providing a seamless u
 
 # Streamlit page for search interface
 def page_search():
+    if 'original_search_text' not in st.session_state:
+        st.session_state['original_search_text'] = ''
     # Basic Filters: True / False / None filters, initialize with 'None'
     basic_options = {}
     for option in config['basic_filters']:
@@ -377,7 +379,6 @@ def page_search():
 
     if 'search_text' not in st.session_state:
         st.session_state['search_text'] = ''
-    
     # Text area for entering the search query
     with input_column:
         search_text = st.text_area("Search Text", value = st.session_state['search_text'])
@@ -388,6 +389,8 @@ def page_search():
         # Add some blank lines
         st.markdown('<br><br>', unsafe_allow_html=True)
         if st.button("Extract Filters"):
+            # Save the original search text for later use
+            st.session_state['original_search_text'] = search_text.strip()
             # Condition Extraction
             conditions = extract_filters(search_text, schema)
             if conditions is not None:
@@ -426,7 +429,13 @@ def page_search():
                 st.session_state['search_text'] = extracted_desc
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-        
+    
+    # Display the original search text
+    original_text_col, null_button_col = st.columns([4, 1])
+    with original_text_col:
+        if st.session_state['original_search_text'] != '':
+            st.markdown("**Original Search Text:** " + st.session_state['original_search_text'], unsafe_allow_html=True)
+
     # Display the basic filters using an expander
     basic_filters = st.expander("Basic Filters")
     with st.expander("Basic Filters"):
